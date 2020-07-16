@@ -10,6 +10,7 @@ import Icon from 'mastodon/components/icon';
 import Avatar from 'mastodon/components/avatar';
 import { NavLink } from 'react-router-dom';
 import DropdownMenuContainer from 'mastodon/containers/dropdown_menu_container';
+import AccountNoteContainer from '../containers/account_note_container';
 
 const messages = defineMessages({
   unfollow: { id: 'account.unfollow', defaultMessage: 'Unfollow' },
@@ -310,6 +311,8 @@ class Header extends ImmutablePureComponent {
                   ))}
                 </div>
               )}
+
+              {account.get('id') !== me && <AccountNoteContainer account={account} />}
 
               {account.get('note').length > 0 && account.get('note') !== '<p></p>' && <div className='account__header__content' dangerouslySetInnerHTML={content} />}
             </div>
