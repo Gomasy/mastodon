@@ -9,8 +9,8 @@ GIT
 
 GIT
   remote: https://github.com/gomasy/charlock_holmes.git
-  revision: 22742b20c386a0d4bc9eb49f48640bfc839aeeea
-  ref: 22742b20c386a0d4bc9eb49f48640bfc839aeeea
+  revision: dff95939a325fa951ce3a9958856e94b9bdc59f1
+  ref: dff95939a325fa951ce3a9958856e94b9bdc59f1
   specs:
     charlock_holmes (0.7.7)
 
