@@ -1,14 +1,16 @@
 # syntax=docker/dockerfile:1.4
-# This needs to be bookworm-slim because the Ruby image is built on bookworm-slim
-ARG NODE_VERSION="20.12-bookworm-slim"
+ARG RUBY_VERSION="3.2.4"
+ARG NODE_MAJOR_VERSION="20"
+ARG DEBIAN_VERSION="bookworm"
 
-FROM ghcr.io/moritzheiber/ruby-jemalloc:3.2.4-slim as ruby
-FROM node:${NODE_VERSION} as build
+FROM docker.io/ruby:${RUBY_VERSION}-slim-${DEBIAN_VERSION} as ruby
+FROM docker.io/node:${NODE_MAJOR_VERSION}-${DEBIAN_VERSION}-slim as build
 
-COPY --link --from=ruby /opt/ruby /opt/ruby
+COPY --link --from=ruby /usr/local/bin/ /usr/local/bin/
+COPY --link --from=ruby /usr/local/include/ /usr/local/include/
+COPY --link --from=ruby /usr/local/lib/ /usr/local/lib/
 
-ENV DEBIAN_FRONTEND="noninteractive" \
-    PATH="${PATH}:/opt/ruby/bin"
+ENV DEBIAN_FRONTEND="noninteractive"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -17,21 +19,22 @@ COPY Gemfile* package.json yarn.lock /opt/mastodon/
 
 # hadolint ignore=DL3008
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
         git \
-        libicu-dev \
-        libidn-dev \
-        libpq-dev \
-        libjemalloc-dev \
-        zlib1g-dev \
         libgdbm-dev \
         libgmp-dev \
-        libssl-dev \
-        libyaml-0-2 \
-        ca-certificates \
+        libicu-dev \
+        libidn-dev \
+        libjemalloc-dev \
+        libpq-dev \
         libreadline8 \
+        libssl-dev \
+        libyaml-dev \
         python3 \
-        shared-mime-info && \
+        shared-mime-info \
+        zlib1g-dev && \
     bundle config set --local deployment 'true' && \
     bundle config set --local without 'development test' && \
     bundle config set silence_root_warning true && \
@@ -39,7 +42,7 @@ RUN apt-get update && \
     yarn install --pure-lockfile --production --network-timeout 600000 && \
     yarn cache clean
 
-FROM node:${NODE_VERSION}
+FROM docker.io/node:${NODE_MAJOR_VERSION}-${DEBIAN_VERSION}-slim
 
 # Use those args to specify your own version flags & suffixes
 ARG MASTODON_VERSION_PRERELEASE=""
@@ -48,12 +51,13 @@ ARG MASTODON_VERSION_METADATA=""
 ARG UID="991"
 ARG GID="991"
 
-COPY --link --from=ruby /opt/ruby /opt/ruby
+COPY --link --from=ruby /usr/local/bin/ /usr/local/bin/
+COPY --link --from=ruby /usr/local/lib/ /usr/local/lib/
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND="noninteractive" \
-    PATH="${PATH}:/opt/ruby/bin:/opt/mastodon/bin"
+    PATH="${PATH}:/opt/mastodon/bin"
 
 # Ignoring these here since we don't want to pin any versions and the Debian image removes apt-get content after use
 # hadolint ignore=DL3008,DL3009
@@ -61,22 +65,26 @@ RUN apt-get update && \
     echo "Etc/UTC" > /etc/localtime && \
     groupadd -g "${GID}" mastodon && \
     useradd -l -u "$UID" -g "${GID}" -m -d /opt/mastodon mastodon && \
-    apt-get -y --no-install-recommends install whois \
-        wget \
-        procps \
-        libssl3 \
-        libpq5 \
-        imagemagick \
+    apt-get -y --no-install-recommends install \
+        ca-certificates \
+        curl \
         ffmpeg \
-        libjemalloc2 \
+        file \
+        imagemagick \
         libicu72 \
         libidn12 \
-        libyaml-0-2 \
-        file \
-        ca-certificates \
-        tzdata \
+        libjemalloc2 \
+        libpq5 \
         libreadline8 \
-        tini && \
+        libssl3 \
+        libvips42 \
+        libyaml-0-2 \
+        patchelf \
+        procps \
+        tini \
+        tzdata && \
+    patchelf --add-needed libjemalloc.so.2 /usr/local/bin/ruby && \
+    apt-get -y purge patchelf && \
     ln -s /opt/mastodon /mastodon && \
     echo "label ::1/128 0" > /etc/gai.conf
 
